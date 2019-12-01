@@ -1,0 +1,30 @@
+{
+  "name": "scratch3-bridge",
+  "version": "1.0.0",
+  "description": "Javascript library to exchange data with Scratch 3 online projects using cloud variables",
+  "main": "scratch-bridge.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paulolc/scratch3-bridge.git"
+  },
+  "keywords": [
+    "scratch3",
+    "mit",
+    "javascript",
+    "library",
+    "cloud",
+    "variables"
+  ],
+  "author": "paulolc <paulolc@futurix.pt>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/paulolc/scratch3-bridge/issues"
+  },
+  "homepage": "https://github.com/paulolc/scratch3-bridge#readme",
+  "dependencies": {
+    "scratch-api": "github:paulolc/scratch-api"
+  }
+}
