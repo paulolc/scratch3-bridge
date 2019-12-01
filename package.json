@@ -1,8 +1,8 @@
 {
   "name": "scratch3-bridge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Javascript library to exchange data with Scratch 3 online projects using cloud variables",
-  "main": "scratch-bridge.js",
+  "main": "scratch3-bridge.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
