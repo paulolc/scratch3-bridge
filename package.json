@@ -1,6 +1,6 @@
 {
   "name": "scratch3-bridge",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Javascript library to exchange data with Scratch 3 online projects using cloud variables",
   "main": "scratch3-bridge.js",
   "scripts": {
@@ -25,6 +25,6 @@
   },
   "homepage": "https://github.com/paulolc/scratch3-bridge#readme",
   "dependencies": {
-    "scratch-api": "github:paulolc/scratch-api"
+    "scratch-api": "^1.1.11"
   }
 }

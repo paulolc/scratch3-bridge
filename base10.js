@@ -3,8 +3,8 @@
 Base10 = {
 
     ALL_CHARS: "0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz?!@.,:;)(-_{}[]%$#+-*/ÀÉÓÍàáãâóõôêéè",
-    //                 |         |         |         |         |         |         |         |         |         |        |
-    //                 0        10        20        30        40        50        60        70        80        90        99
+    //         |         |         |         |         |         |         |         |         |         |        |
+    //         0        10        20        30        40        50        60        70        80        90        99
     
     encodechar2twodigits(char){
         return (Base10.ALL_CHARS.search(char) + 1).toString().padStart(2,0)
