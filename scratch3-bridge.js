@@ -3,14 +3,26 @@ const base10 = require('./base10')
 const Scratch = require('scratch-api');
 const readline = require('readline');
 
+const MAXFRAGMENTSIZE = 120;
+
+function debug(msg){
+    if( ScratchBridge.DEBUG ){
+        console.log( `${Date.now()} [DEBUG]: ScratchBridge: ${msg}`)
+    }
+};
+
+function error(msg){
+    console.log( `${Date.now()} [ERROR]: ScratchBridge: ${msg}`)
+}
 
 class ScratchBridge extends EventEmitter{
 
-    constructor(user=null, password=null, project=null){
+    constructor(user=null, password=null, project=null, debug=false){
         super();
         this.user = user;
         this.password = password;
         this.project = project;
+        ScratchBridge.DEBUG = debug;
         this.on('_ready', () => {
             this._opensession();        
         });
@@ -22,19 +34,17 @@ class ScratchBridge extends EventEmitter{
 
         Scratch.UserSession.load( (err, session) => {
 
-            if (err) {
-                console.log(err);
+            if (err) { error(err); return; }            
+
+            self.session = session;
+            if( self.project != null ){
+                self.emit('_ready');                    
                 return;
             }
 
-            self.session = session;
-
             session.getAllProjects( (err, projects) => {
 
-                if (err) {
-                    console.log(err);
-                    return;
-                }
+                if (err) { error(err); return; }            
 
                 let c = projects.length;
                 projects.reverse().forEach((project)=>{
@@ -63,17 +73,14 @@ class ScratchBridge extends EventEmitter{
 	let self = this;
 
         this.session.cloudSession(this.project, (err, cloudvars) => {
-            if (err) {
-                console.log(err);
-                return;
-            }
+            if (err) { error(err); return; }            
 
             self._cloudvars = cloudvars;
 
-            self._cloudvars.on('set', (varname, value) => { 
-
+            self._cloudvars.on('set', (cloudvarname, value) => { 
                 const decoded = base10.decode( value );
-                self.emit('msg', { name: varname.substr(2), msg: decoded } );
+                const varname = cloudvarname.substr(2);
+                self.emit(varname, decoded);
 
             })
             if( !self._connected ){
@@ -85,26 +92,60 @@ class ScratchBridge extends EventEmitter{
         
     }
 
-    send( name, msg, cb ){
+    sendunsplitted( name, arr, cb ){
         if( ! this.session ){
             if(cb){
                 cb(new Error('Session not opened'));
             }
             return;            
         }
-        const encodedmsg =  base10.encode([msg]);
-        this._cloudvars.set(`☁ ${name}`, encodedmsg); 
+        const encodedmsg = base10.encode(arr);
+        debug(`sendunsplitted: arr:\n ${arr}`);
+        debug(`sendunsplitted: encodedmsg(${encodedmsg.length}):\n ${encodedmsg}`);
+        self._cloudvars.set(`☁ ${name}`, encodedmsg); 
+    }
+
+    send( name, str, cb ){
+        this.sendarray(name,[str],cb);
+    }
+
+
+    sendarray( name, msg, cb ){
+        if( ! this.session ){
+            if(cb){
+                cb(new Error('Session not opened'));
+            }
+            return;            
+        }
+
+        const encodedmsg = base10.encode(msg);
+        const splitonsizeregex = new RegExp(`.{1,${MAXFRAGMENTSIZE}}`,"g");
+        const splitmsg = encodedmsg.match(splitonsizeregex);
+        debug(`sendarray: msg:\n ${msg}`);
+        debug(`sendarray: encodedmsg(${encodedmsg.length}):\n ${encodedmsg}`);
+        debug(`sendarray: splitmsg: ${splitmsg}`);
+
+        let i=0;
+        let interval = setInterval(()=>{
+            if( i < splitmsg.length ){
+                let splittedstr=splitmsg[i];
+                i+=1;
+                if( splittedstr.slice(-2) != Base10.ENDCHARSEQ ){
+                    splittedstr+=Base10.ENDCHARSEQ;
+                }
+                debug(`sendarray: splitted str [${i}] (${splittedstr.length}) : ${splittedstr}` );
+                this._cloudvars.set(`☁ ${name}`, splittedstr); 
+            } else {
+                clearInterval( interval );
+            }
+
+        },100);
     }
 
     _createsession(){
         let self = this;
         Scratch.UserSession.create( this.user, this.password , (err, usersession) => {
-
-            if (err) {
-                console.log(err);
-                return;
-            }
-
+            if (err) { error(err); return; }            
             self.session = usersession;
             this.emit('_ready');
         })
