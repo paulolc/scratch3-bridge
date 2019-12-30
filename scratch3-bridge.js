@@ -4,15 +4,34 @@ const Scratch = require('scratch-api');
 const readline = require('readline');
 
 const MAXFRAGMENTSIZE = 120;
+const MSGIDSIZE = 5;
+const MSGSEQSIZE = 2;
+const HEADERSIZE = MSGIDSIZE + MSGSEQSIZE;
+const TIME_BETWEEN_MESSAGES_SENT_IN_MS = 100;
+const PINGINTERVAL_IN_MILLIS = 5000;
+
+const INCOMING_CLOUDVAR = "@scratch";
+const OUTGOING_CLOUDVAR = "@cloud";
+const PING_CLOUDVAR = "@ping"
+
+
+let nonce = (()=>{
+    let c = Math.floor(Math.random() * 8888)+1000;
+    return ()=>{
+       return c++ % 1000;
+    }
+  })()
+  
 
 function debug(msg){
     if( ScratchBridge.DEBUG ){
-        console.log( `${Date.now()} [DEBUG]: ScratchBridge: ${msg}`)
-    }
+//        const d = new Date();
+        console.log( `${new Date().toISOString()} [DEBUG]: ScratchBridge: ${msg}`)
+}
 };
 
 function error(msg){
-    console.log( `${Date.now()} [ERROR]: ScratchBridge: ${msg}`)
+    console.log( `${d.toISOString()} [ERROR]: ScratchBridge: ${msg}`)
 }
 
 class ScratchBridge extends EventEmitter{
@@ -23,8 +42,9 @@ class ScratchBridge extends EventEmitter{
         this.password = password;
         this.project = project;
         ScratchBridge.DEBUG = debug;
+        let self = this;
         this.on('_ready', () => {
-            this._opensession();        
+            self._opensession();        
         });
     }
 
@@ -68,49 +88,64 @@ class ScratchBridge extends EventEmitter{
         })
     }
 
-    _opensession(){
-    
-	let self = this;
+    _startping(){
+        let self = this;
+        setInterval(()=>{ 
+            self._sendraw(PING_CLOUDVAR, `${nonce()}`); 
+          }, PINGINTERVAL_IN_MILLIS)   
+    }
 
+    _getvarhandler(){
+        let self = this;
+        return (cloudvarname, value) =>{ 
+            const varname = cloudvarname.substr(2);
+            if( varname === INCOMING_CLOUDVAR ){
+                const header = value.substr(0,HEADERSIZE);
+                const sourceid = value.substr(0,MSGIDSIZE);
+                const seqnr = value.substr(MSGIDSIZE,MSGSEQSIZE);
+                const msg = value.substr(HEADERSIZE,value.length);
+                const decoded = base10.decode( msg );
+                debug(`_setvarhandler:   var: ${varname}`);
+                debug(`_setvarhandler:  data: ${value}`);
+                debug(`_setvarhandler: split: ${sourceid} | ${seqnr} | ${msg}`);
+                debug(`_setvarhandler:   msg: ${decoded}`);
+                self.emit('data',  decoded, header, sourceid, seqnr );    
+            } else {
+                debug(`_setvarhandler: unknown var: ${varname}`);
+                debug(`_setvarhandler:        data: ${value}`);
+                self.emit(varname, value);    
+            }
+        }
+    }
+    
+    _opensession(){
+	    let self = this;
         this.session.cloudSession(this.project, (err, cloudvars) => {
             if (err) { error(err); return; }            
-
             self._cloudvars = cloudvars;
-
-            self._cloudvars.on('set', (cloudvarname, value) => { 
-                const decoded = base10.decode( value );
-                const varname = cloudvarname.substr(2);
-                self.emit(varname, decoded);
-
-            })
+            self._cloudvars.on('set', self._getvarhandler());
             if( !self._connected ){
                 self._connected = true;
                 self.emit('connect' );
+                self._startping();
             }
-
         })
-        
     }
 
-    sendunsplitted( name, arr, cb ){
-        if( ! this.session ){
-            if(cb){
-                cb(new Error('Session not opened'));
-            }
-            return;            
+    send( header, str, cb ){
+        this._send( OUTGOING_CLOUDVAR,header,str,cb);
+    }
+
+    _sendraw(varname, str){
+        if( str.slice(-2) != Base10.ENDCHARSEQ ){
+            str+=Base10.ENDCHARSEQ;
         }
-        const encodedmsg = base10.encode(arr);
-        debug(`sendunsplitted: arr:\n ${arr}`);
-        debug(`sendunsplitted: encodedmsg(${encodedmsg.length}):\n ${encodedmsg}`);
-        self._cloudvars.set(`☁ ${name}`, encodedmsg); 
+        debug(`_sendraw: ${varname}, str (${str.length}) : ${str}` );
+        this._cloudvars.set(`☁ ${varname}`, str); 
     }
 
-    send( name, str, cb ){
-        this.sendarray(name,[str],cb);
-    }
-
-
-    sendarray( name, msg, cb ){
+    _send( varname, header, msg, cb ){
+        let self = this;
         if( ! this.session ){
             if(cb){
                 cb(new Error('Session not opened'));
@@ -120,26 +155,22 @@ class ScratchBridge extends EventEmitter{
 
         const encodedmsg = base10.encode(msg);
         const splitonsizeregex = new RegExp(`.{1,${MAXFRAGMENTSIZE}}`,"g");
-        const splitmsg = encodedmsg.match(splitonsizeregex);
-        debug(`sendarray: msg:\n ${msg}`);
-        debug(`sendarray: encodedmsg(${encodedmsg.length}):\n ${encodedmsg}`);
-        debug(`sendarray: splitmsg: ${splitmsg}`);
+        const splitmsg = encodedmsg.match(splitonsizeregex).map((str)=>header+str);
+        debug(`send: to: ${varname}`);
+        debug(`send: msg: ${msg}`);
+        debug(`send: encoded(${encodedmsg.length}): ${encodedmsg}`);
+        debug(`send: splitted: ${splitmsg}`);
 
-        let i=0;
         let interval = setInterval(()=>{
-            if( i < splitmsg.length ){
-                let splittedstr=splitmsg[i];
-                i+=1;
-                if( splittedstr.slice(-2) != Base10.ENDCHARSEQ ){
-                    splittedstr+=Base10.ENDCHARSEQ;
-                }
-                debug(`sendarray: splitted str [${i}] (${splittedstr.length}) : ${splittedstr}` );
-                this._cloudvars.set(`☁ ${name}`, splittedstr); 
+            const str = splitmsg.shift()
+            if( str ){
+                self._sendraw( varname, str );
             } else {
                 clearInterval( interval );
+                if(cb){ cb(); }
+                return;
             }
-
-        },100);
+        },TIME_BETWEEN_MESSAGES_SENT_IN_MS);
     }
 
     _createsession(){

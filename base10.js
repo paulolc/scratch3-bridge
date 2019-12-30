@@ -24,10 +24,16 @@ Base10 = {
         return encodedcharsarray.join("");
     },
     
+    endofmessage(){
+        return Base10.ENDCHARSEQ+Base10.ENDCHARSEQ;
+    },
     
     encode( strarray ){
-        console.log(`strarray: ${strarray}`);
-        return `${ strarray.map( Base10.encodestring2twodigits ).join(Base10.ENDCHARSEQ) }${Base10.ENDCHARSEQ}` ;
+        if( Array.isArray(strarray)){ 
+            return `${ strarray.map( Base10.encodestring2twodigits ).join(Base10.ENDCHARSEQ)}${Base10.endofmessage()}` ;
+        } else {
+            return `${Base10.encodestring2twodigits(strarray)}${Base10.endofmessage()}`
+        }
     },
     
     decode( bignumber ){
