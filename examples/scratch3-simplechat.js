@@ -8,7 +8,7 @@ let msgrbridge = new ScratchBridge();
 
 msgrbridge.connect();
 
-msgrbridge.on('msg', msg =>{
+msgrbridge.on('data', msg =>{
     console.log(`> ${msg.msg}`);
 });
 
