@@ -6,10 +6,15 @@ let msgrbridge = new ScratchBridge();
 //Alternative (no user prompts made):
 //let msgrbridge = new ScratchBridge( "ascratchuser", "theuserpassword",PROJECT_ID);
 
-msgrbridge.connect();
 
-msgrbridge.on('data', msg =>{
-    console.log(`> ${msg.msg}`);
+
+msgrbridge.connect();
+let sender;
+
+msgrbridge.on('data', (msg,asender) =>{
+    console.log(`>(${asender}): ${msg}`);
+    sender = asender;
+    msgrbridge.send( sender, `String reversed on the server: ${msg.toString().split('').reverse().join('')}`  );
 });
 
 msgrbridge.on('connect', () => {
@@ -21,7 +26,8 @@ msgrbridge.on('connect', () => {
     });
 
     stdinput.on('line', (msg) => {
-        msgrbridge.send('@servidor', msg );
+        
+        msgrbridge.send( sender, `Message written on the server: ${msg}` );
         if(msg === "quit"){
             stdinput.close();
         }

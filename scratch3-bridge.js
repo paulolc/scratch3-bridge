@@ -51,7 +51,7 @@ class ScratchBridge extends EventEmitter{
     _promptvalues(){
 
         let self = this;
-
+        console.log("Enter your Scratch credentials.")
         Scratch.UserSession.load( (err, session) => {
 
             if (err) { error(err); return; }            
@@ -77,7 +77,7 @@ class ScratchBridge extends EventEmitter{
                     output: process.stdout
                   });
                   
-                stdinput.question('Choose the project to connect to:', (idx) => {
+                stdinput.question('Choose the Scratch project to connect to:', (idx) => {
                     const projectidx = projects.length - idx; 
                     let project = projects[projectidx];
                     self.project = project.pk;
