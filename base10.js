@@ -8,6 +8,7 @@ Base10 = {
     
     DEFAULT_CHAR: "_",
     ENDCHARSEQ : "00",
+    RESERVED : "99",
 
     encodechar2twodigits(char){
         const encodedchar = (Base10.ALL_CHARS.indexOf(char) + 1).toString().padStart(2,0);

@@ -51,7 +51,7 @@ class ScratchBridge extends EventEmitter{
     _promptvalues(){
 
         let self = this;
-        console.log("Enter your Scratch credentials.")
+
         Scratch.UserSession.load( (err, session) => {
 
             if (err) { error(err); return; }            
@@ -77,7 +77,7 @@ class ScratchBridge extends EventEmitter{
                     output: process.stdout
                   });
                   
-                stdinput.question('Choose the Scratch project to connect to:', (idx) => {
+                stdinput.question('Choose the project to connect to:', (idx) => {
                     const projectidx = projects.length - idx; 
                     let project = projects[projectidx];
                     self.project = project.pk;
@@ -137,9 +137,7 @@ class ScratchBridge extends EventEmitter{
     }
 
     _sendraw(varname, str){
-        if( str.slice(-2) != Base10.ENDCHARSEQ ){
-            str+=Base10.ENDCHARSEQ;
-        }
+        str+=Base10.RESERVED;
         debug(`_sendraw: ${varname}, str (${str.length}) : ${str}` );
         this._cloudvars.set(`☁ ${varname}`, str); 
     }
@@ -159,7 +157,7 @@ class ScratchBridge extends EventEmitter{
         debug(`send: to: ${varname}`);
         debug(`send: msg: ${msg}`);
         debug(`send: encoded(${encodedmsg.length}): ${encodedmsg}`);
-        debug(`send: splitted: ${splitmsg}`);
+        debug(`send: splitted: \n${splitmsg.join("\n")}`);
 
         let interval = setInterval(()=>{
             const str = splitmsg.shift()
