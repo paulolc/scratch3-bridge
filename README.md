@@ -7,7 +7,7 @@ This library allows you to develop programs in JavaScript, on any platform that 
 
 # How to use
 
-## If on node.js install the dependency using npm
+## Install the dependencies
 ```bash
 npm install scratch3-bridge
 ```
@@ -56,3 +56,64 @@ npm install scratch3-bridge
 # The sender id
 
 It is an integer with the identifier of which scratch project running instance sent the message. You can use this sender id later to respond back to the specific scratch project running instance that sent the original message. For instance, if your scratch project is a game and if multiple people are playing, the sender id will be able to distinguish from multiple running instances of the game.
+
+
+## Complete example. A simple phrase reverser in node
+
+This is a complete example that demonstrates the use of scratch3-bridge. 
+
+It's a simple phrase reverser and semi-chat. It receives the phrase written on the Scratch project input block and sends the phrase reversed back to the Scratch project.
+
+A companion Scratch project is in https://scratch.mit.edu/projects/368606046/ (You'll need to Remix it and recreate the cloud variables)
+
+
+```javascript
+
+const readline = require('readline');
+const ScratchBridge = require('scratch3-bridge');
+
+let msgrbridge = new ScratchBridge();
+/*
+
+Alternative (without prompts):
+   
+    let msgrbridge = new ScratchBridge( "ascratchuser", "theuserpassword",PROJECT_ID);
+
+*/
+
+
+msgrbridge.connect();
+let sender;
+
+msgrbridge.on('data', (msg,asender) =>{
+    console.log(`>(${asender}): ${msg}`);
+    sender = asender;
+    msgrbridge.send( sender, `String reversed on the server: ${msg.toString().split('').reverse().join('')}`  );
+});
+
+msgrbridge.on('connect', () => {
+    console.log( "Connected!! Sending your messages to Scratch:")
+    
+    const stdinput = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    stdinput.on('line', (msg) => {
+        
+        msgrbridge.send( sender, `Message written on the server: ${msg}` );
+        if(msg === "quit"){
+            stdinput.close();
+        }
+    })
+
+})
+
+
+
+```
+
+
+
+
+
